@@ -27,8 +27,8 @@ export default function LoginPage() {
   };
 
   const fillDemoAccount = () => {
-    setEmail('rahul@codesphere.dev');
-    setPassword('SecurePass123!');
+    setEmail('alex@codesphere.io');
+    setPassword('Password123!');
   };
 
   return (

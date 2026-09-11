@@ -55,6 +55,16 @@ async function main() {
     },
   });
 
+  const rahul = await prisma.user.create({
+    data: {
+      name: 'Rahul Sharma',
+      email: 'rahul@codesphere.dev',
+      passwordHash,
+      bio: 'Full Stack Developer & Cloud Engineer.',
+      skills: ['React', 'Node.js', 'PostgreSQL', 'AWS'],
+    },
+  });
+
   const elena = await prisma.user.create({
     data: {
       name: 'Elena Rostova',

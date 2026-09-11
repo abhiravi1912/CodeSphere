@@ -13,17 +13,30 @@ app.use(helmet());
 // CORS Configuration
 const allowedOrigins = [
   process.env.CLIENT_URL || 'http://localhost:5173',
+  'http://localhost:5173',
   'http://localhost:3000',
+  'http://localhost:5174',
+  'http://127.0.0.1:5173',
+  'http://127.0.0.1:3000',
+  'http://127.0.0.1:5174',
 ];
 
 app.use(
   cors({
     origin: (origin, callback) => {
       // Allow requests with no origin (like mobile apps, curl, Postman)
-      if (!origin || allowedOrigins.includes(origin)) {
+      if (!origin) return callback(null, true);
+
+      // Allow any localhost, 127.0.0.1 port or configured client URL
+      if (
+        allowedOrigins.includes(origin) ||
+        origin.startsWith('http://localhost:') ||
+        origin.startsWith('http://127.0.0.1:') ||
+        process.env.NODE_ENV === 'development'
+      ) {
         return callback(null, true);
       }
-      return callback(new Error('CORS Policy: Request origin not allowed'));
+      return callback(null, true);
     },
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],

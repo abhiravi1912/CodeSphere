@@ -12,7 +12,6 @@ import {
   Calendar, 
   Activity, 
   Cpu, 
-  Github, 
   Sparkles,
   Layers
 } from 'lucide-react';

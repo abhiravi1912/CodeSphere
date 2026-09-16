@@ -29,26 +29,31 @@
 
 /* Glassmorphism utilities */
 .glass-panel {
-  background: rgba(17, 24, 39, 0.7);
-  backdrop-filter: blur(12px);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(15, 23, 42, 0.75);
+  backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.07);
 }
 
 .glass-card {
-  background: rgba(30, 41, 59, 0.5);
-  backdrop-filter: blur(8px);
-  border: 1px solid rgba(255, 255, 255, 0.05);
+  background: rgba(15, 23, 42, 0.5);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.06);
 }
 
 .glass-card:hover {
-  border-color: rgba(99, 102, 241, 0.3);
-  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3), 0 8px 10px -6px rgba(99, 102, 241, 0.1);
+  border-color: rgba(99, 102, 241, 0.35);
+  box-shadow: 0 12px 30px -8px rgba(0, 0, 0, 0.45), 0 0 20px -3px rgba(99, 102, 241, 0.12);
 }
 
 .glow-brand {
-  box-shadow: 0 0 35px -5px rgba(99, 102, 241, 0.3);
+  box-shadow: 0 0 35px -5px rgba(99, 102, 241, 0.25);
 }
 
-.glow-aws {
-  box-shadow: 0 0 30px -5px rgba(255, 153, 0, 0.25);
+.glow-subtle {
+  box-shadow: 0 0 50px -10px rgba(99, 102, 241, 0.15);
+}
+
+/* Smooth transitions */
+.transition-smooth {
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }

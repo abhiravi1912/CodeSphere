@@ -4,17 +4,15 @@ import { useAuth } from '../../context/AuthContext';
 import api from '../../services/api';
 import { 
   Cloud, 
-  Layers, 
   Plus, 
   LogOut, 
-  User as UserIcon, 
   Bell, 
-  ShieldCheck, 
-  Terminal,
-  Check,
-  CheckCheck,
+  Check, 
+  CheckCheck, 
   ExternalLink,
-  X
+  X,
+  User as UserIcon,
+  ChevronDown
 } from 'lucide-react';
 
 export default function Navbar({ onOpenNewProject }) {
@@ -24,7 +22,9 @@ export default function Navbar({ onOpenNewProject }) {
   const [notifications, setNotifications] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [showNotifications, setShowNotifications] = useState(false);
-  const dropdownRef = useRef(null);
+  const [showUserMenu, setShowUserMenu] = useState(false);
+  const notifRef = useRef(null);
+  const userMenuRef = useRef(null);
 
   const fetchNotifications = async () => {
     if (!user) return;
@@ -34,8 +34,8 @@ export default function Navbar({ onOpenNewProject }) {
         setNotifications(res.data.data.notifications);
         setUnreadCount(res.data.data.unreadCount || 0);
       }
-    } catch (err) {
-      // Ignore notification fetch errors
+    } catch {
+      // Ignore background notification fetch errors
     }
   };
 
@@ -45,11 +45,14 @@ export default function Navbar({ onOpenNewProject }) {
     return () => clearInterval(interval);
   }, [user]);
 
-  // Close dropdown on outside click
+  // Close dropdowns on outside click
   useEffect(() => {
     const handleClickOutside = (event) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+      if (notifRef.current && !notifRef.current.contains(event.target)) {
         setShowNotifications(false);
+      }
+      if (userMenuRef.current && !userMenuRef.current.contains(event.target)) {
+        setShowUserMenu(false);
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
@@ -86,156 +89,161 @@ export default function Navbar({ onOpenNewProject }) {
   };
 
   return (
-    <header className="sticky top-0 z-40 w-full glass-panel border-b border-slate-800/80 bg-[#0B0F19]/90 backdrop-blur-md">
+    <header className="sticky top-0 z-40 w-full glass-panel border-b border-slate-800/80 bg-[#0B0F19]/85 backdrop-blur-md">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
         
         {/* Brand Logo */}
         <div className="flex items-center space-x-3">
-          <Link to="/" className="flex items-center space-x-2 group">
-            <div className="h-10 w-10 rounded-xl bg-gradient-to-tr from-indigo-600 via-indigo-500 to-sky-400 p-[1px] flex items-center justify-center shadow-lg shadow-indigo-500/20 group-hover:scale-105 transition-all">
+          <Link to={user ? "/dashboard" : "/"} className="flex items-center space-x-2.5 group">
+            <div className="h-9 w-9 rounded-xl bg-gradient-to-tr from-indigo-600 to-sky-400 p-[1px] flex items-center justify-center shadow-lg shadow-indigo-500/20 group-hover:scale-105 transition-transform">
               <div className="h-full w-full bg-[#0B0F19] rounded-[11px] flex items-center justify-center">
-                <Cloud className="w-5 h-5 text-sky-400 group-hover:text-indigo-400 transition-colors" />
+                <Cloud className="w-5 h-5 text-indigo-400 group-hover:text-sky-400 transition-colors" />
               </div>
             </div>
             <div>
-              <span className="text-xl font-bold bg-gradient-to-r from-white via-slate-100 to-indigo-200 bg-clip-text text-transparent">
-                CodeSphere
-              </span>
-              <span className="hidden sm:inline-block ml-2 text-[10px] font-semibold tracking-wider uppercase px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/20">
-                AWS Cloud Native
+              <span className="text-base font-extrabold text-white tracking-tight">CodeSphere</span>
+              <span className="hidden sm:inline-block ml-2 text-[10px] font-semibold px-2 py-0.5 rounded-full bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">
+                Workspace
               </span>
             </div>
           </Link>
         </div>
 
-        {/* Action Center & Profile */}
-        <div className="flex items-center space-x-4">
-          {user ? (
-            <>
-              {onOpenNewProject && (
-                <button
-                  onClick={onOpenNewProject}
-                  className="inline-flex items-center space-x-1.5 px-3.5 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-medium shadow-md shadow-indigo-600/20 hover:shadow-indigo-500/30 transition-all cursor-pointer"
-                >
-                  <Plus className="w-4 h-4" />
-                  <span className="hidden sm:inline">New Project</span>
-                </button>
+        {/* Right Nav Controls */}
+        <div className="flex items-center space-x-2 sm:space-x-3">
+          
+          {/* New Project Button (if provided) */}
+          {onOpenNewProject && (
+            <button
+              onClick={onOpenNewProject}
+              className="inline-flex items-center space-x-1.5 px-3 py-1.5 sm:px-3.5 sm:py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold shadow-md shadow-indigo-600/20 transition-all cursor-pointer"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              <span>New Project</span>
+            </button>
+          )}
+
+          {/* Notifications Dropdown */}
+          <div className="relative" ref={notifRef}>
+            <button
+              onClick={() => setShowNotifications(!showNotifications)}
+              className="relative p-2 rounded-xl bg-slate-900/80 hover:bg-slate-800 text-slate-300 hover:text-white border border-slate-800 transition-colors cursor-pointer"
+              aria-label="Notifications"
+            >
+              <Bell className="w-4 h-4" />
+              {unreadCount > 0 && (
+                <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-rose-500 text-white text-[9px] font-bold flex items-center justify-center animate-pulse">
+                  {unreadCount > 9 ? '9+' : unreadCount}
+                </span>
               )}
+            </button>
 
-              {/* AWS Status Badge */}
-              <div className="hidden md:flex items-center space-x-1.5 px-2.5 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-medium">
-                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-                <span>RDS & S3 Ready</span>
-              </div>
-
-              {/* Notification Bell with Dropdown */}
-              <div className="relative" ref={dropdownRef}>
-                <button
-                  onClick={() => setShowNotifications(!showNotifications)}
-                  className="relative p-2 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors cursor-pointer"
-                  title="Notifications"
-                >
-                  <Bell className="w-5 h-5" />
+            {showNotifications && (
+              <div className="absolute right-0 mt-2 w-80 sm:w-96 rounded-2xl glass-panel border border-slate-700/80 shadow-2xl bg-[#0F172A] overflow-hidden z-50 animate-in fade-in zoom-in-95">
+                <div className="p-3.5 border-b border-slate-800 flex items-center justify-between">
+                  <div className="flex items-center space-x-2">
+                    <span className="text-xs font-bold text-white">Notifications</span>
+                    {unreadCount > 0 && (
+                      <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-rose-500/10 text-rose-400 border border-rose-500/20">
+                        {unreadCount} new
+                      </span>
+                    )}
+                  </div>
                   {unreadCount > 0 && (
-                    <span className="absolute top-1.5 right-1.5 w-2.5 h-2.5 rounded-full bg-rose-500 ring-2 ring-[#0B0F19] animate-pulse" />
+                    <button
+                      onClick={handleMarkAllRead}
+                      className="text-[11px] text-indigo-400 hover:text-indigo-300 font-medium flex items-center space-x-1"
+                    >
+                      <CheckCheck className="w-3.5 h-3.5" />
+                      <span>Mark all read</span>
+                    </button>
                   )}
-                </button>
-
-                {showNotifications && (
-                  <div className="absolute right-0 mt-2 w-80 sm:w-96 rounded-2xl bg-slate-900 border border-slate-700 shadow-2xl z-50 overflow-hidden">
-                    <div className="p-3.5 border-b border-slate-800 flex items-center justify-between bg-slate-950/50">
-                      <div className="flex items-center space-x-2">
-                        <Bell className="w-4 h-4 text-indigo-400" />
-                        <span className="text-xs font-bold text-white uppercase tracking-wider">Notifications</span>
-                        {unreadCount > 0 && (
-                          <span className="px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-rose-500/20 text-rose-400 border border-rose-500/30">
-                            {unreadCount} new
-                          </span>
-                        )}
-                      </div>
-                      {unreadCount > 0 && (
-                        <button
-                          onClick={handleMarkAllRead}
-                          className="text-[11px] text-indigo-400 hover:text-indigo-300 flex items-center space-x-1 transition-colors"
-                        >
-                          <CheckCheck className="w-3.5 h-3.5" />
-                          <span>Mark all read</span>
-                        </button>
-                      )}
-                    </div>
-
-                    <div className="max-h-80 overflow-y-auto divide-y divide-slate-800/60">
-                      {notifications.length === 0 ? (
-                        <div className="p-6 text-center text-slate-500 text-xs">
-                          No notifications yet
-                        </div>
-                      ) : (
-                        notifications.map((n) => (
-                          <div
-                            key={n.id}
-                            onClick={() => handleMarkOneRead(n.id, n.linkUrl)}
-                            className={`p-3.5 hover:bg-slate-800/60 transition-colors cursor-pointer flex items-start justify-between gap-3 ${
-                              !n.isRead ? 'bg-indigo-500/5' : ''
-                            }`}
-                          >
-                            <div className="flex-1">
-                              <div className="flex items-center space-x-2">
-                                <span className={`w-1.5 h-1.5 rounded-full ${!n.isRead ? 'bg-indigo-400' : 'bg-transparent'}`} />
-                                <h4 className="text-xs font-semibold text-white leading-tight">{n.title}</h4>
-                              </div>
-                              <p className="text-[11px] text-slate-400 mt-1 line-clamp-2">{n.message}</p>
-                              <span className="text-[9px] text-slate-500 mt-1 block">
-                                {new Date(n.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', month: 'short', day: 'numeric' })}
-                              </span>
-                            </div>
-                            {n.linkUrl && <ExternalLink className="w-3.5 h-3.5 text-slate-500 flex-shrink-0 mt-1" />}
-                          </div>
-                        ))
-                      )}
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              {/* User Dropdown / Profile */}
-              <div className="flex items-center space-x-3 pl-2 border-l border-slate-800">
-                <div className="flex items-center space-x-2">
-                  <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-indigo-500 to-purple-600 flex items-center justify-center text-white font-semibold text-xs uppercase shadow-inner">
-                    {user.name ? user.name.slice(0, 2) : 'CS'}
-                  </div>
-                  <div className="hidden lg:block text-left">
-                    <p className="text-xs font-medium text-slate-200 leading-none">{user.name}</p>
-                    <p className="text-[10px] text-slate-400 leading-none mt-1">{user.email}</p>
-                  </div>
                 </div>
 
-                <button
-                  onClick={handleLogout}
-                  title="Sign out"
-                  className="p-1.5 rounded-lg text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 transition-colors"
-                >
-                  <LogOut className="w-4 h-4" />
-                </button>
+                <div className="max-h-80 overflow-y-auto divide-y divide-slate-800/60">
+                  {notifications.length === 0 ? (
+                    <div className="py-8 text-center text-slate-500 text-xs">
+                      No notifications yet.
+                    </div>
+                  ) : (
+                    notifications.map((notif) => (
+                      <div
+                        key={notif.id}
+                        onClick={() => handleMarkOneRead(notif.id, notif.linkUrl)}
+                        className={`p-3 text-xs transition-colors cursor-pointer hover:bg-slate-800/50 ${
+                          !notif.isRead ? 'bg-indigo-950/20' : ''
+                        }`}
+                      >
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="space-y-0.5">
+                            <p className={`font-semibold ${!notif.isRead ? 'text-white' : 'text-slate-300'}`}>
+                              {notif.title}
+                            </p>
+                            <p className="text-slate-400 text-[11px] leading-relaxed">
+                              {notif.content}
+                            </p>
+                            <span className="text-[10px] text-slate-500 block pt-0.5">
+                              {new Date(notif.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                            </span>
+                          </div>
+                          {!notif.isRead && (
+                            <span className="w-2 h-2 rounded-full bg-indigo-500 flex-shrink-0 mt-1" />
+                          )}
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
               </div>
-            </>
-          ) : (
-            <div className="flex items-center space-x-3">
-              <Link
-                to="/login"
-                className="px-4 py-2 text-sm font-medium text-slate-300 hover:text-white transition-colors"
+            )}
+          </div>
+
+          {/* User Profile Pill / Menu */}
+          {user && (
+            <div className="relative" ref={userMenuRef}>
+              <button
+                onClick={() => setShowUserMenu(!showUserMenu)}
+                className="flex items-center space-x-2 p-1.5 sm:px-2.5 sm:py-1.5 rounded-xl bg-slate-900/80 hover:bg-slate-800 border border-slate-800 transition-colors cursor-pointer"
               >
-                Sign In
-              </Link>
-              <Link
-                to="/register"
-                className="px-4 py-2 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-500 rounded-lg shadow-md shadow-indigo-600/20 transition-all"
-              >
-                Get Started
-              </Link>
+                <div className="w-7 h-7 rounded-lg bg-gradient-to-tr from-indigo-600 to-sky-400 flex items-center justify-center text-xs font-bold text-white uppercase flex-shrink-0">
+                  {(user.name || 'U').slice(0, 2)}
+                </div>
+                <div className="hidden sm:block text-left">
+                  <p className="text-xs font-semibold text-white leading-none truncate max-w-[100px]">{user.name}</p>
+                  <p className="text-[10px] text-slate-400 leading-none mt-1 truncate max-w-[100px]">{user.email}</p>
+                </div>
+                <ChevronDown className="w-3.5 h-3.5 text-slate-400 hidden sm:block" />
+              </button>
+
+              {showUserMenu && (
+                <div className="absolute right-0 mt-2 w-52 rounded-2xl glass-panel border border-slate-700/80 shadow-2xl bg-[#0F172A] overflow-hidden z-50 p-1 animate-in fade-in zoom-in-95">
+                  <div className="px-3 py-2.5 border-b border-slate-800">
+                    <p className="text-xs font-bold text-white">{user.name}</p>
+                    <p className="text-[11px] text-slate-400 truncate">{user.email}</p>
+                  </div>
+                  <div className="p-1 space-y-0.5">
+                    <Link
+                      to="/dashboard"
+                      onClick={() => setShowUserMenu(false)}
+                      className="w-full text-left px-3 py-2 rounded-xl text-xs font-medium text-slate-300 hover:text-white hover:bg-slate-800/80 flex items-center space-x-2"
+                    >
+                      <Cloud className="w-3.5 h-3.5 text-indigo-400" />
+                      <span>Projects Dashboard</span>
+                    </Link>
+                    <button
+                      onClick={handleLogout}
+                      className="w-full text-left px-3 py-2 rounded-xl text-xs font-medium text-rose-400 hover:bg-rose-500/10 flex items-center space-x-2 cursor-pointer"
+                    >
+                      <LogOut className="w-3.5 h-3.5" />
+                      <span>Sign Out</span>
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           )}
-        </div>
 
+        </div>
       </div>
     </header>
   );

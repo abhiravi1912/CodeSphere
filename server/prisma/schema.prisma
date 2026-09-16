@@ -72,12 +72,13 @@ model Project {
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @updatedAt
 
-  members    ProjectMember[]
-  tasks      Task[]
-  messages   Message[]
-  files      File[]
-  documents  Document[]
-  activities Activity[]
+  members           ProjectMember[]
+  tasks             Task[]
+  messages          Message[]
+  files             File[]
+  documents         Document[]
+  activities        Activity[]
+  githubIntegration GitHubIntegration?
 
   @@index([ownerId])
   @@index([status])
@@ -192,4 +193,19 @@ model Notification {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, isRead])
+}
+
+model GitHubIntegration {
+  id            String    @id @default(uuid())
+  projectId     String    @unique
+  repoOwner     String
+  repoName      String
+  repoUrl       String
+  defaultBranch String    @default("main")
+  connectedAt   DateTime  @default(now())
+  lastSyncedAt  DateTime?
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([projectId])
 }

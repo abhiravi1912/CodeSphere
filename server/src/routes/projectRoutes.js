@@ -13,6 +13,7 @@ const { getTasks, createTask, updateTask, deleteTask } = require('../controllers
 const { getMessages, createMessage } = require('../controllers/messageController');
 const { getFiles, uploadProjectFile, deleteProjectFile, downloadProjectFile } = require('../controllers/fileController');
 const { getDocuments, getDocumentById, createDocument, updateDocument, deleteDocument } = require('../controllers/documentController');
+const { getGitHubIntegration, connectGitHubRepo, disconnectGitHubRepo, getGitHubCommits, getGitHubBranches, getGitHubIssues, getGitHubPulls } = require('../controllers/githubController');
 const upload = require('../middleware/uploadMiddleware');
 const { protect, loadProjectMember, requireRole } = require('../middleware/authMiddleware');
 
@@ -127,5 +128,30 @@ router.put('/:id/documents/:docId', loadProjectMember, updateDocument);
 
 // DELETE /api/projects/:id/documents/:docId   — Delete a document
 router.delete('/:id/documents/:docId', loadProjectMember, deleteDocument);
+
+// ─────────────────────────────────────────────
+// GITHUB INTEGRATION
+// ─────────────────────────────────────────────
+
+// GET    /api/projects/:id/github              — Integration status + repo overview
+router.get('/:id/github', loadProjectMember, getGitHubIntegration);
+
+// POST   /api/projects/:id/github              — Connect a GitHub repository (OWNER | ADMIN)
+router.post('/:id/github', loadProjectMember, requireRole('OWNER', 'ADMIN'), connectGitHubRepo);
+
+// DELETE /api/projects/:id/github              — Disconnect GitHub repository (OWNER | ADMIN)
+router.delete('/:id/github', loadProjectMember, requireRole('OWNER', 'ADMIN'), disconnectGitHubRepo);
+
+// GET    /api/projects/:id/github/commits      — Recent commits
+router.get('/:id/github/commits', loadProjectMember, getGitHubCommits);
+
+// GET    /api/projects/:id/github/branches     — Repository branches
+router.get('/:id/github/branches', loadProjectMember, getGitHubBranches);
+
+// GET    /api/projects/:id/github/issues       — Open issues
+router.get('/:id/github/issues', loadProjectMember, getGitHubIssues);
+
+// GET    /api/projects/:id/github/pulls        — Open pull requests
+router.get('/:id/github/pulls', loadProjectMember, getGitHubPulls);
 
 module.exports = router;

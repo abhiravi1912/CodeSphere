@@ -204,7 +204,7 @@ const getProjectHealth = async (req, res, next) => {
     const projectId = req.params.id;
 
     // Fetch all metrics in parallel for maximum efficiency
-    const [project, taskStats, memberCount, fileStats, messageCount, recentActivities] =
+    const [project, taskStats, memberCount, fileStats, messageCount, recentActivities, githubIntegration] =
       await Promise.all([
         prisma.project.findUnique({ where: { id: projectId } }),
         prisma.task.groupBy({
@@ -225,6 +225,7 @@ const getProjectHealth = async (req, res, next) => {
           take: 5,
           include: { user: { select: { name: true, avatarUrl: true } } },
         }),
+        prisma.gitHubIntegration.findUnique({ where: { projectId } }),
       ]);
 
     if (!project) return errorResponse(res, 'Project not found.', 404);
@@ -264,6 +265,13 @@ const getProjectHealth = async (req, res, next) => {
       },
       messages: messageCount,
       recentActivities,
+      github: {
+        connected: !!githubIntegration,
+        repoOwner: githubIntegration?.repoOwner || null,
+        repoName: githubIntegration?.repoName || null,
+        repoUrl: githubIntegration?.repoUrl || null,
+        defaultBranch: githubIntegration?.defaultBranch || null,
+      },
     };
 
     return successResponse(res, 'Project health retrieved.', health);

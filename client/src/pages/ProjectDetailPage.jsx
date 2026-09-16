@@ -2,10 +2,12 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { io } from 'socket.io-client';
 import Navbar from '../components/layout/Navbar';
+import GitHubTab from '../components/github/GitHubTab';
 import api from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import {
   ArrowLeft,
+  ArrowRight,
   LayoutDashboard,
   MessageSquare,
   KanbanSquare,
@@ -37,7 +39,8 @@ import {
   Sparkles,
   Folder,
   Check,
-  Search
+  Search,
+  GitBranch
 } from 'lucide-react';
 
 function GithubIcon({ className = "w-4 h-4" }) {
@@ -138,12 +141,19 @@ export default function ProjectDetailPage() {
   // ─────────────────────────────────────────────────────────────
   const fetchProjectData = useCallback(async () => {
     try {
-      const [projRes, healthRes] = await Promise.all([
+      const [projRes, healthRes, tasksRes, filesRes] = await Promise.all([
         api.get(`/projects/${projectId}`),
         api.get(`/projects/${projectId}/health`).catch(() => ({ data: { data: null } })),
+        api.get(`/projects/${projectId}/tasks`).catch(() => ({ data: { data: [] } })),
+        api.get(`/projects/${projectId}/files`).catch(() => ({ data: { data: { files: [] } } })),
       ]);
       if (projRes.data?.data)    setProject(projRes.data.data);
       if (healthRes.data?.data)  setHealth(healthRes.data.data);
+      if (tasksRes.data?.data)   setTasks(tasksRes.data.data);
+      if (filesRes.data?.data?.files) {
+        setFiles(filesRes.data.data.files);
+        setIsS3Active(filesRes.data.data.isS3Active);
+      }
     } catch (err) {
       console.error('Error fetching project:', err);
     } finally {
@@ -528,6 +538,20 @@ export default function ProjectDetailPage() {
     ? documents
     : documents.filter((d) => d.category === docCategory);
 
+  const urgentTasks = (tasks || []).filter((t) => (t.priority === 'URGENT' || t.priority === 'HIGH') && t.status !== 'COMPLETED');
+  const unassignedTasks = (tasks || []).filter((t) => !t.assigneeId && t.status !== 'COMPLETED');
+  const hasAttention = urgentTasks.length > 0 || unassignedTasks.length > 0 || (health?.daysRemaining !== null && health?.daysRemaining !== undefined && health?.daysRemaining <= 7);
+
+  const taskStats = health?.tasks?.breakdown || {
+    TODO: (tasks || []).filter(t => t.status === 'TODO').length,
+    IN_PROGRESS: (tasks || []).filter(t => t.status === 'IN_PROGRESS').length,
+    REVIEW: (tasks || []).filter(t => t.status === 'REVIEW').length,
+    COMPLETED: (tasks || []).filter(t => t.status === 'COMPLETED').length,
+  };
+  const totalTasksCount = health?.tasks?.total ?? (tasks || []).length;
+  const completedTasksCount = health?.tasks?.completed ?? (tasks || []).filter(t => t.status === 'COMPLETED').length;
+  const completionPct = health?.completionPercent ?? (totalTasksCount > 0 ? Math.round((completedTasksCount / totalTasksCount) * 100) : 0);
+
   // ─────────────────────────────────────────────────────────────
   // Loading / not-found states
   // ─────────────────────────────────────────────────────────────
@@ -566,6 +590,7 @@ export default function ProjectDetailPage() {
     { id: 'docs',      label: 'Documentation', icon: FileText },
     { id: 'members',   label: 'Members',       icon: Users },
     { id: 'activity',  label: 'Activity',      icon: Activity },
+    { id: 'github',    label: 'GitHub',        icon: GithubIcon },
   ];
 
   return (
@@ -573,45 +598,55 @@ export default function ProjectDetailPage() {
       <Navbar />
 
       {/* ── Project Sub-header ─────────────────────────────────── */}
-      <div className="glass-panel border-b border-slate-800 bg-[#0F172A]/70 sticky top-16 z-30 backdrop-blur-md">
+      <div className="glass-panel border-b border-slate-800/80 bg-[#0F172A]/85 sticky top-16 z-30 backdrop-blur-md">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-            {/* Title & Metadata */}
+          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+            
+            {/* Title & Metadata Hierarchy */}
             <div className="flex items-center space-x-3 min-w-0">
-              <Link to="/" className="p-1.5 rounded-lg bg-slate-800/80 hover:bg-slate-700 text-slate-400 hover:text-white transition-colors flex-shrink-0">
+              <Link
+                to="/dashboard"
+                className="p-2 rounded-xl bg-slate-900/90 hover:bg-slate-800 text-slate-400 hover:text-white border border-slate-800 transition-colors flex-shrink-0"
+                title="Back to Projects Dashboard"
+              >
                 <ArrowLeft className="w-4 h-4" />
               </Link>
               <div className="min-w-0">
                 <div className="flex items-center space-x-2 flex-wrap gap-y-1">
-                  <h1 className="text-lg font-bold text-white truncate">{project.name}</h1>
-                  <span className="px-2 py-0.5 rounded text-[10px] font-mono bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">
-                    {project.status}
+                  <h1 className="text-lg font-extrabold text-white tracking-tight truncate">{project.name}</h1>
+                  <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                    {project.status || 'ACTIVE'}
                   </span>
-                  <span className={`px-2 py-0.5 rounded text-[10px] font-semibold border ${
+                  <span className={`px-2 py-0.5 rounded-md text-[10px] font-semibold border ${
                     myRole === 'OWNER' ? 'bg-amber-500/10 text-amber-400 border-amber-500/20'
                     : myRole === 'ADMIN' ? 'bg-sky-500/10 text-sky-400 border-sky-500/20'
                     : 'bg-slate-800 text-slate-400 border-slate-700'
                   }`}>{myRole}</span>
                   {project.githubRepoUrl && (
-                    <a href={project.githubRepoUrl} target="_blank" rel="noreferrer"
-                      className="p-1 rounded text-slate-400 hover:text-white" title="GitHub Repository">
+                    <a
+                      href={project.githubRepoUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="p-1 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
+                      title="Open GitHub Repository"
+                    >
                       <GithubIcon className="w-3.5 h-3.5" />
                     </a>
                   )}
                 </div>
-                <p className="text-xs text-slate-400 truncate">{project.description || 'No description'}</p>
+                <p className="text-xs text-slate-400 truncate max-w-xl mt-0.5">{project.description || 'Project workspace active.'}</p>
               </div>
             </div>
 
-            {/* Tabs */}
-            <div className="flex items-center space-x-1 p-1 rounded-xl bg-slate-900/90 border border-slate-800 overflow-x-auto flex-shrink-0">
+            {/* Navigation Tabs */}
+            <div className="flex items-center space-x-1 p-1 rounded-xl bg-slate-950/80 border border-slate-800/90 overflow-x-auto flex-shrink-0">
               {TABS.map(({ id, label, icon: Icon }) => (
                 <button
                   key={id}
                   onClick={() => setActiveTab(id)}
                   className={`inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all whitespace-nowrap cursor-pointer ${
                     activeTab === id
-                      ? 'bg-indigo-600 text-white shadow-md'
+                      ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/20 font-semibold'
                       : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
                   }`}
                 >
@@ -625,141 +660,477 @@ export default function ProjectDetailPage() {
       </div>
 
       {/* ── Main Content ────────────────────────────────────────── */}
-      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
+      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
 
         {/* ══════════════ TAB: OVERVIEW ══════════════ */}
         {activeTab === 'overview' && (
           <div className="space-y-6">
-            {/* Health Metrics */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              {[
-                { label: 'Completion', value: `${health?.completionPercent ?? 0}%`, sub: `${health?.tasks?.completed ?? 0} / ${health?.tasks?.total ?? 0} tasks`, icon: CheckCircle2, color: 'text-emerald-400' },
-                { label: 'Total Tasks', value: health?.tasks?.total ?? 0, sub: `${health?.tasks?.remaining ?? 0} remaining`, icon: KanbanSquare, color: 'text-indigo-400' },
-                { label: 'Team Members', value: health?.members ?? project.members?.length ?? 1, sub: 'Active collaborators', icon: Users, color: 'text-sky-400' },
-                { label: 'Cloud Files', value: health?.files?.count ?? files.length ?? 0, sub: `${((health?.files?.totalBytes ?? 0) / (1024 * 1024)).toFixed(1)} MB stored`, icon: HardDrive, color: 'text-purple-400' },
-              ].map((m, i) => {
-                const Icon = m.icon;
-                return (
-                  <div key={i} className="glass-panel p-4 rounded-2xl border border-slate-800/80 hover:border-slate-700 transition-all">
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-xs font-medium text-slate-400">{m.label}</span>
-                      <Icon className={`w-4 h-4 ${m.color}`} />
+              
+              {/* 1. PROJECT HERO / SUMMARY BANNER */}
+              <div className="rounded-2xl p-6 md:p-7 bg-gradient-to-r from-indigo-950/40 via-slate-900/90 to-slate-900/70 border border-slate-800 shadow-xl">
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-center">
+                  
+                  {/* Left info & Quick actions */}
+                  <div className="lg:col-span-2 space-y-4">
+                    <div className="space-y-2">
+                      <div className="flex items-center space-x-2">
+                        <span className="text-xs font-bold uppercase tracking-wider text-indigo-400">Workspace Overview</span>
+                        <span className="text-slate-600">•</span>
+                        <span className="text-xs text-slate-400">{project.category || 'Full-Stack'}</span>
+                      </div>
+                      <h2 className="text-xl sm:text-2xl font-bold text-white tracking-tight">
+                        {project.name}
+                      </h2>
+                      <p className="text-xs sm:text-sm text-slate-300 leading-relaxed max-w-2xl">
+                        {project.description || 'Welcome to your collaborative team workspace. Track tasks, chat with members, share cloud assets, and monitor GitHub progress in real time.'}
+                      </p>
                     </div>
-                    <p className="text-2xl font-bold text-white">{m.value}</p>
-                    <p className="text-[11px] text-slate-500 mt-1">{m.sub}</p>
-                  </div>
-                );
-              })}
-            </div>
 
-            {/* Project Details Grid */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              {/* Left Column - Details */}
-              <div className="lg:col-span-2 space-y-6">
-                <div className="glass-panel rounded-2xl p-6 border border-slate-800 space-y-4">
-                  <h3 className="text-base font-bold text-white flex items-center space-x-2">
-                    <Sparkles className="w-4 h-4 text-indigo-400" />
-                    <span>Project Description</span>
-                  </h3>
-                  <p className="text-sm text-slate-300 leading-relaxed whitespace-pre-line">
-                    {project.description || 'No description provided.'}
-                  </p>
-
-                  {/* Tech Stack */}
-                  {project.techStack?.length > 0 && (
-                    <div className="pt-4 border-t border-slate-800">
-                      <h4 className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Tech Stack</h4>
-                      <div className="flex flex-wrap gap-2">
+                    {/* Tech stack chips */}
+                    {project.techStack?.length > 0 && (
+                      <div className="flex flex-wrap gap-1.5 pt-1">
                         {project.techStack.map((tech, idx) => (
-                          <span key={idx} className="px-2.5 py-1 rounded-lg text-xs font-medium bg-slate-800/80 text-sky-300 border border-slate-700/80">
+                          <span key={idx} className="px-2.5 py-1 rounded-lg text-[11px] font-medium bg-slate-900/90 text-sky-300 border border-slate-800">
                             {tech}
                           </span>
                         ))}
                       </div>
+                    )}
+
+                    {/* Quick Actions Row */}
+                    <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-slate-800/80">
+                      <button
+                        onClick={() => setShowTaskModal(true)}
+                        className="px-3.5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold shadow-sm transition-all inline-flex items-center space-x-1.5 cursor-pointer"
+                      >
+                        <Plus className="w-3.5 h-3.5" />
+                        <span>Create Task</span>
+                      </button>
+
+                      {canManageMembers && (
+                        <button
+                          onClick={() => setActiveTab('members')}
+                          className="px-3 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-200 border border-slate-700/80 text-xs font-semibold transition-colors inline-flex items-center space-x-1.5 cursor-pointer"
+                        >
+                          <UserPlus className="w-3.5 h-3.5 text-sky-400" />
+                          <span>Invite Member</span>
+                        </button>
+                      )}
+
+                      <button
+                        onClick={() => fileInputRef.current?.click()}
+                        className="px-3 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-200 border border-slate-700/80 text-xs font-semibold transition-colors inline-flex items-center space-x-1.5 cursor-pointer"
+                      >
+                        <UploadCloud className="w-3.5 h-3.5 text-purple-400" />
+                        <span>Upload File</span>
+                      </button>
+
+                      <button
+                        onClick={openNewDocModal}
+                        className="px-3 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-200 border border-slate-700/80 text-xs font-semibold transition-colors inline-flex items-center space-x-1.5 cursor-pointer"
+                      >
+                        <FileText className="w-3.5 h-3.5 text-amber-400" />
+                        <span>New Doc</span>
+                      </button>
                     </div>
-                  )}
-                </div>
-
-                {/* Task Status Breakdown */}
-                <div className="glass-panel rounded-2xl p-6 border border-slate-800">
-                  <h3 className="text-base font-bold text-white mb-4 flex items-center justify-between">
-                    <span className="flex items-center space-x-2">
-                      <KanbanSquare className="w-4 h-4 text-sky-400" />
-                      <span>Task Progress</span>
-                    </span>
-                    <button onClick={() => setActiveTab('kanban')} className="text-xs text-indigo-400 hover:text-indigo-300 flex items-center space-x-1">
-                      <span>View Kanban</span>
-                      <ChevronRight className="w-3.5 h-3.5" />
-                    </button>
-                  </h3>
-                  <div className="grid grid-cols-4 gap-3 text-center">
-                    {Object.entries(health?.tasks?.breakdown || { TODO: 0, IN_PROGRESS: 0, REVIEW: 0, COMPLETED: 0 }).map(([st, count]) => (
-                      <div key={st} className="p-3 rounded-xl bg-slate-900/60 border border-slate-800">
-                        <p className="text-lg font-bold text-white">{count}</p>
-                        <p className="text-[10px] text-slate-400 uppercase tracking-wider mt-0.5">{statusLabel[st] || st}</p>
-                      </div>
-                    ))}
                   </div>
-                </div>
-              </div>
 
-              {/* Right Column - Team & Info */}
-              <div className="space-y-6">
-                {/* Team Members Widget */}
-                <div className="glass-panel rounded-2xl p-5 border border-slate-800">
-                  <div className="flex items-center justify-between mb-4">
-                    <h3 className="text-sm font-bold text-white flex items-center space-x-2">
-                      <Users className="w-4 h-4 text-indigo-400" />
-                      <span>Team Members ({project.members?.length || 0})</span>
-                    </h3>
-                    <button onClick={() => setActiveTab('members')} className="text-xs text-indigo-400 hover:text-indigo-300">
-                      Manage
-                    </button>
-                  </div>
-                  <div className="space-y-3">
-                    {project.members?.slice(0, 5).map((m) => (
-                      <div key={m.id} className="flex items-center justify-between">
-                        <div className="flex items-center space-x-2.5">
-                          <div className="w-7 h-7 rounded-full bg-gradient-to-tr from-indigo-600 to-sky-500 flex items-center justify-center text-[10px] font-bold text-white uppercase">
-                            {(m.user?.name || 'U').slice(0, 2)}
-                          </div>
-                          <div>
-                            <p className="text-xs font-semibold text-white">{m.user?.name}</p>
-                            <p className="text-[10px] text-slate-400">{m.user?.email}</p>
-                          </div>
-                        </div>
-                        <span className="text-[9px] font-bold px-2 py-0.5 rounded bg-slate-800 text-slate-400 border border-slate-700">
-                          {m.role}
+                  {/* Right Progress Gauge Card */}
+                  <div className="p-5 rounded-2xl bg-slate-950/80 border border-slate-800/90 space-y-3.5">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-bold uppercase tracking-wider text-slate-400">Project Velocity</span>
+                      <span className="text-xl font-extrabold text-white">{completionPct}%</span>
+                    </div>
+
+                    {/* Segmented Progress Bar */}
+                    <div className="w-full h-2.5 rounded-full bg-slate-800 overflow-hidden flex">
+                      {totalTasksCount > 0 ? (
+                        <>
+                          <div style={{ width: `${(taskStats.COMPLETED / totalTasksCount) * 100}%` }} className="bg-emerald-500 h-full transition-all" title="Completed" />
+                          <div style={{ width: `${(taskStats.IN_PROGRESS / totalTasksCount) * 100}%` }} className="bg-indigo-500 h-full transition-all" title="In Progress" />
+                          <div style={{ width: `${(taskStats.REVIEW / totalTasksCount) * 100}%` }} className="bg-amber-500 h-full transition-all" title="Review" />
+                          <div style={{ width: `${(taskStats.TODO / totalTasksCount) * 100}%` }} className="bg-slate-700 h-full transition-all" title="To Do" />
+                        </>
+                      ) : (
+                        <div className="w-full bg-slate-800 h-full" />
+                      )}
+                    </div>
+
+                    <div className="flex items-center justify-between text-[11px] text-slate-400">
+                      <span>{completedTasksCount} of {totalTasksCount} tasks done</span>
+                      <span>{totalTasksCount - completedTasksCount} remaining</span>
+                    </div>
+
+                    {project.deadline && (
+                      <div className="pt-2 border-t border-slate-800/80 flex items-center justify-between text-[11px]">
+                        <span className="text-slate-500 flex items-center space-x-1">
+                          <Clock className="w-3 h-3" />
+                          <span>Deadline</span>
+                        </span>
+                        <span className={`font-semibold ${health?.daysRemaining !== null && health?.daysRemaining <= 3 ? 'text-rose-400' : 'text-slate-300'}`}>
+                          {new Date(project.deadline).toLocaleDateString()} {health?.daysRemaining !== null && `(${health.daysRemaining}d left)`}
                         </span>
                       </div>
-                    ))}
+                    )}
+                  </div>
+
+                </div>
+              </div>
+
+              {/* 2. INTERACTIVE STAT METRICS (Clickable cards that navigate to tabs) */}
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                {[
+                  {
+                    label: 'Completion',
+                    value: `${completionPct}%`,
+                    sub: `${completedTasksCount} / ${totalTasksCount} tasks done`,
+                    icon: CheckCircle2,
+                    color: 'text-emerald-400',
+                    action: () => setActiveTab('kanban'),
+                    actionLabel: 'View tasks →'
+                  },
+                  {
+                    label: 'Task Board',
+                    value: totalTasksCount,
+                    sub: `${totalTasksCount - completedTasksCount} active tasks`,
+                    icon: KanbanSquare,
+                    color: 'text-indigo-400',
+                    action: () => setActiveTab('kanban'),
+                    actionLabel: 'Open Kanban →'
+                  },
+                  {
+                    label: 'Team Members',
+                    value: health?.members ?? project.members?.length ?? 1,
+                    sub: 'Active collaborators',
+                    icon: Users,
+                    color: 'text-sky-400',
+                    action: () => setActiveTab('members'),
+                    actionLabel: 'Manage team →'
+                  },
+                  {
+                    label: 'Cloud Files',
+                    value: health?.files?.count ?? files.length,
+                    sub: `${((health?.files?.totalSizeBytes ?? 0) / (1024 * 1024)).toFixed(1)} MB stored`,
+                    icon: HardDrive,
+                    color: 'text-purple-400',
+                    action: () => setActiveTab('files'),
+                    actionLabel: 'Open storage →'
+                  },
+                ].map((m, i) => {
+                  const Icon = m.icon;
+                  return (
+                    <div
+                      key={i}
+                      onClick={m.action}
+                      className="glass-card p-4 rounded-2xl border border-slate-800 hover:border-indigo-500/40 transition-all cursor-pointer group"
+                    >
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-xs font-medium text-slate-400">{m.label}</span>
+                        <Icon className={`w-4 h-4 ${m.color}`} />
+                      </div>
+                      <p className="text-2xl font-bold text-white group-hover:text-indigo-300 transition-colors">{m.value}</p>
+                      <div className="flex items-center justify-between mt-2 pt-2 border-t border-slate-800/60 text-[11px] text-slate-400">
+                        <span className="truncate">{m.sub}</span>
+                        <span className="text-indigo-400 group-hover:translate-x-0.5 transition-transform flex-shrink-0 ml-1">
+                          <ChevronRight className="w-3.5 h-3.5 inline" />
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* 3. "WHAT NEEDS ATTENTION" SECTION */}
+              <div className="p-4 rounded-2xl bg-slate-900/60 border border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div className="flex items-center space-x-3">
+                  <div className={`w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 ${
+                    hasAttention ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20' : 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
+                  }`}>
+                    {hasAttention ? <AlertCircle className="w-4 h-4" /> : <CheckCircle2 className="w-4 h-4" />}
+                  </div>
+                  <div>
+                    <h4 className="text-xs font-bold text-white">
+                      {hasAttention ? 'Items Requiring Attention' : 'All Systems Running Smoothly'}
+                    </h4>
+                    <div className="flex items-center space-x-2 text-[11px] text-slate-400 mt-0.5 flex-wrap gap-y-1">
+                      {urgentTasks.length > 0 ? (
+                        <span className="text-rose-400 font-semibold">• {urgentTasks.length} urgent/high priority task(s) active</span>
+                      ) : null}
+                      {unassignedTasks.length > 0 ? (
+                        <span className="text-amber-400">• {unassignedTasks.length} task(s) awaiting assignment</span>
+                      ) : null}
+                      {!hasAttention && (
+                        <span>No blockers or critical deadlines approaching.</span>
+                      )}
+                    </div>
                   </div>
                 </div>
 
-                {/* Cloud Architecture Info */}
-                <div className="glass-panel rounded-2xl p-5 border border-slate-800 space-y-3">
-                  <h3 className="text-sm font-bold text-white flex items-center space-x-2">
-                    <Cpu className="w-4 h-4 text-emerald-400" />
-                    <span>Cloud Architecture</span>
-                  </h3>
-                  <div className="space-y-2 text-xs text-slate-400">
-                    <div className="flex items-center justify-between py-1 border-b border-slate-800">
-                      <span>Database Engine</span>
-                      <span className="font-mono text-slate-200">PostgreSQL (RDS)</span>
+                {hasAttention && (
+                  <button
+                    onClick={() => setActiveTab('kanban')}
+                    className="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold transition-colors inline-flex items-center space-x-1 self-start sm:self-auto cursor-pointer"
+                  >
+                    <span>Review Tasks</span>
+                    <ArrowRight className="w-3 h-3" />
+                  </button>
+                )}
+              </div>
+
+              {/* 4. MAIN TWO-COLUMN SECTION */}
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                
+                {/* Left Column (2/3 width) */}
+                <div className="lg:col-span-2 space-y-6">
+                  
+                  {/* Task Status Breakdown */}
+                  <div className="glass-panel rounded-2xl p-6 border border-slate-800 space-y-4">
+                    <div className="flex items-center justify-between">
+                      <h3 className="text-sm font-bold text-white flex items-center space-x-2">
+                        <KanbanSquare className="w-4 h-4 text-sky-400" />
+                        <span>Task Workflow Breakdown</span>
+                      </h3>
+                      <button
+                        onClick={() => setActiveTab('kanban')}
+                        className="text-xs text-indigo-400 hover:text-indigo-300 font-medium inline-flex items-center space-x-1 cursor-pointer"
+                      >
+                        <span>Open Kanban</span>
+                        <ChevronRight className="w-3.5 h-3.5" />
+                      </button>
                     </div>
-                    <div className="flex items-center justify-between py-1 border-b border-slate-800">
-                      <span>Object Storage</span>
-                      <span className="font-mono text-slate-200">AWS S3 / Local</span>
-                    </div>
-                    <div className="flex items-center justify-between py-1">
-                      <span>Real-Time Engine</span>
-                      <span className="font-mono text-emerald-400">WebSocket / Socket.IO</span>
+
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-center">
+                      {[
+                        { status: 'TODO', label: 'To Do', count: taskStats.TODO, color: 'text-slate-300', bg: 'bg-slate-900/90' },
+                        { status: 'IN_PROGRESS', label: 'In Progress', count: taskStats.IN_PROGRESS, color: 'text-indigo-400', bg: 'bg-indigo-950/30' },
+                        { status: 'REVIEW', label: 'In Review', count: taskStats.REVIEW, color: 'text-amber-400', bg: 'bg-amber-950/30' },
+                        { status: 'COMPLETED', label: 'Done', count: taskStats.COMPLETED, color: 'text-emerald-400', bg: 'bg-emerald-950/30' },
+                      ].map((col) => (
+                        <div
+                          key={col.status}
+                          onClick={() => setActiveTab('kanban')}
+                          className={`p-3.5 rounded-xl ${col.bg} border border-slate-800 hover:border-slate-700 transition-all cursor-pointer group`}
+                        >
+                          <p className={`text-xl font-bold ${col.color}`}>{col.count}</p>
+                          <p className="text-[10px] text-slate-400 font-semibold uppercase tracking-wider mt-1">{col.label}</p>
+                          <span className="text-[10px] text-indigo-400 opacity-0 group-hover:opacity-100 transition-opacity block mt-1">
+                            View →
+                          </span>
+                        </div>
+                      ))}
                     </div>
                   </div>
+
+                  {/* Recent Activity Timeline Preview */}
+                  <div className="glass-panel rounded-2xl p-6 border border-slate-800 space-y-4">
+                    <div className="flex items-center justify-between">
+                      <h3 className="text-sm font-bold text-white flex items-center space-x-2">
+                        <Activity className="w-4 h-4 text-indigo-400" />
+                        <span>Recent Project Activity</span>
+                      </h3>
+                      <button
+                        onClick={() => setActiveTab('activity')}
+                        className="text-xs text-indigo-400 hover:text-indigo-300 font-medium inline-flex items-center space-x-1 cursor-pointer"
+                      >
+                        <span>View All Activity</span>
+                        <ChevronRight className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+
+                    {(health?.recentActivities?.length || 0) === 0 ? (
+                      <p className="text-xs text-slate-500 py-4 text-center">No activity logged yet.</p>
+                    ) : (
+                      <div className="space-y-3">
+                        {(health?.recentActivities || []).slice(0, 4).map((act) => (
+                          <div key={act.id} className="flex items-start space-x-3 p-2.5 rounded-xl hover:bg-slate-900/50 transition-colors">
+                            <div className="w-7 h-7 rounded-full bg-gradient-to-tr from-indigo-600 to-sky-500 flex items-center justify-center text-[10px] font-bold text-white uppercase flex-shrink-0">
+                              {(act.user?.name || 'U').slice(0, 2)}
+                            </div>
+                            <div className="min-w-0 flex-1">
+                              <p className="text-xs text-slate-200 leading-snug">{act.details}</p>
+                              <span className="text-[10px] text-slate-500 mt-0.5 block">
+                                {new Date(act.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} • {new Date(act.createdAt).toLocaleDateString()}
+                              </span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Cloud Files Preview */}
+                  <div className="glass-panel rounded-2xl p-6 border border-slate-800 space-y-4">
+                    <div className="flex items-center justify-between">
+                      <h3 className="text-sm font-bold text-white flex items-center space-x-2">
+                        <HardDrive className="w-4 h-4 text-purple-400" />
+                        <span>Cloud Storage Files</span>
+                      </h3>
+                      <button
+                        onClick={() => setActiveTab('files')}
+                        className="text-xs text-indigo-400 hover:text-indigo-300 font-medium inline-flex items-center space-x-1 cursor-pointer"
+                      >
+                        <span>View All Files</span>
+                        <ChevronRight className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+
+                    {files.length === 0 ? (
+                      <div className="py-6 text-center space-y-2">
+                        <p className="text-xs text-slate-500">No project files uploaded yet.</p>
+                        <button
+                          onClick={() => fileInputRef.current?.click()}
+                          className="px-3 py-1.5 rounded-lg bg-indigo-600/20 hover:bg-indigo-600/30 text-indigo-300 border border-indigo-500/30 text-xs font-semibold inline-flex items-center space-x-1 cursor-pointer"
+                        >
+                          <UploadCloud className="w-3.5 h-3.5" />
+                          <span>Upload File</span>
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="space-y-2.5">
+                        {files.slice(0, 3).map((f) => (
+                          <div key={f.id} className="p-3 rounded-xl bg-slate-900/60 border border-slate-800/80 flex items-center justify-between hover:border-slate-700 transition-colors">
+                            <div className="flex items-center space-x-3 min-w-0">
+                              {getFileIcon(f.mimeType, f.fileName)}
+                              <div className="min-w-0">
+                                <p className="text-xs font-medium text-white truncate">{f.fileName}</p>
+                                <p className="text-[10px] text-slate-500">{formatFileSize(f.fileSize)} • Uploaded by {f.uploader?.name || 'Member'}</p>
+                              </div>
+                            </div>
+                            <a
+                              href={`/api/projects/${projectId}/files/${f.id}/download`}
+                              className="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white text-xs inline-flex items-center space-x-1 flex-shrink-0"
+                            >
+                              <Download className="w-3.5 h-3.5" />
+                            </a>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
                 </div>
+
+                {/* Right Column (1/3 width) */}
+                <div className="space-y-6">
+                  
+                  {/* Team Members Widget */}
+                  <div className="glass-panel rounded-2xl p-5 border border-slate-800 space-y-4">
+                    <div className="flex items-center justify-between">
+                      <h3 className="text-sm font-bold text-white flex items-center space-x-2">
+                        <Users className="w-4 h-4 text-indigo-400" />
+                        <span>Team Members ({project.members?.length || 0})</span>
+                      </h3>
+                      <button
+                        onClick={() => setActiveTab('members')}
+                        className="text-xs text-indigo-400 hover:text-indigo-300 font-medium cursor-pointer"
+                      >
+                        Manage
+                      </button>
+                    </div>
+
+                    <div className="space-y-3">
+                      {project.members?.slice(0, 5).map((m) => (
+                        <div key={m.id} className="flex items-center justify-between p-2 rounded-xl hover:bg-slate-900/60 transition-colors">
+                          <div className="flex items-center space-x-2.5 min-w-0">
+                            <div className="w-7 h-7 rounded-full bg-gradient-to-tr from-indigo-600 to-sky-500 flex items-center justify-center text-[10px] font-bold text-white uppercase flex-shrink-0">
+                              {(m.user?.name || 'U').slice(0, 2)}
+                            </div>
+                            <div className="min-w-0">
+                              <p className="text-xs font-semibold text-white truncate">{m.user?.name}</p>
+                              <p className="text-[10px] text-slate-400 truncate">{m.user?.email}</p>
+                            </div>
+                          </div>
+                          <span className="text-[9px] font-bold px-2 py-0.5 rounded bg-slate-800 text-slate-400 border border-slate-700 flex-shrink-0">
+                            {m.role}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* GitHub Integration Widget */}
+                  <div className="glass-panel rounded-2xl p-5 border border-slate-800 space-y-3.5">
+                    <div className="flex items-center justify-between">
+                      <h3 className="text-sm font-bold text-white flex items-center space-x-2">
+                        <GithubIcon className="w-4 h-4 text-slate-300" />
+                        <span>GitHub Integration</span>
+                      </h3>
+                      <button
+                        onClick={() => setActiveTab('github')}
+                        className="text-xs text-indigo-400 hover:text-indigo-300 font-medium cursor-pointer"
+                      >
+                        {health?.github?.connected ? 'Workspace' : 'Connect'}
+                      </button>
+                    </div>
+
+                    {health?.github?.connected ? (
+                      <div className="space-y-3 text-xs">
+                        <div className="p-3 rounded-xl bg-slate-950/80 border border-slate-800 space-y-1.5">
+                          <div className="flex items-center justify-between">
+                            <span className="text-slate-200 font-bold truncate">
+                              {health.github.repoOwner}/{health.github.repoName}
+                            </span>
+                            <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                              Connected
+                            </span>
+                          </div>
+                          <p className="text-[11px] text-slate-400 flex items-center space-x-1">
+                            <GitBranch className="w-3 h-3 text-indigo-400" />
+                            <span>Default branch: <strong className="text-slate-300 font-mono">{health.github.defaultBranch || 'main'}</strong></span>
+                          </p>
+                        </div>
+                        <button
+                          onClick={() => setActiveTab('github')}
+                          className="w-full py-2 px-3 rounded-xl bg-indigo-600/20 hover:bg-indigo-600/30 text-indigo-300 border border-indigo-500/30 text-xs font-semibold transition-colors flex items-center justify-center space-x-1.5 cursor-pointer"
+                        >
+                          <GithubIcon className="w-3.5 h-3.5" />
+                          <span>Open GitHub Workspace</span>
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="text-center py-3 space-y-2">
+                        <p className="text-xs text-slate-400">No repository connected yet.</p>
+                        <button
+                          onClick={() => setActiveTab('github')}
+                          className="w-full py-2 px-3 rounded-xl bg-indigo-600/20 hover:bg-indigo-600/30 text-indigo-300 border border-indigo-500/30 text-xs font-semibold transition-colors cursor-pointer"
+                        >
+                          Connect Repository
+                        </button>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Cloud Architecture Info */}
+                  <div className="glass-panel rounded-2xl p-5 border border-slate-800 space-y-3">
+                    <h3 className="text-sm font-bold text-white flex items-center space-x-2">
+                      <Cpu className="w-4 h-4 text-emerald-400" />
+                      <span>Cloud Architecture</span>
+                    </h3>
+                    <div className="space-y-2 text-xs text-slate-400">
+                      <div className="flex items-center justify-between py-1 border-b border-slate-800/80">
+                        <span>Database Engine</span>
+                        <span className="font-mono text-slate-200">PostgreSQL (RDS)</span>
+                      </div>
+                      <div className="flex items-center justify-between py-1 border-b border-slate-800/80">
+                        <span>Object Storage</span>
+                        <span className="font-mono text-slate-200">Amazon S3 / Cloud</span>
+                      </div>
+                      <div className="flex items-center justify-between py-1 border-b border-slate-800/80">
+                        <span>Real-Time Engine</span>
+                        <span className="font-mono text-emerald-400">WebSocket / Socket.IO</span>
+                      </div>
+                      <div className="flex items-center justify-between py-1">
+                        <span>Backend API</span>
+                        <span className="font-mono text-slate-200">Node.js / Express</span>
+                      </div>
+                    </div>
+                  </div>
+
+                </div>
+
               </div>
+
             </div>
-          </div>
         )}
 
         {/* ══════════════ TAB: KANBAN TASKS ══════════════ */}
@@ -1285,6 +1656,15 @@ export default function ProjectDetailPage() {
               </div>
             )}
           </div>
+        )}
+
+        {/* ══════════════ TAB: GITHUB ══════════════ */}
+        {activeTab === 'github' && (
+          <GitHubTab
+            projectId={projectId}
+            myRole={myRole}
+            onProjectUpdate={fetchProjectData}
+          />
         )}
 
       </main>

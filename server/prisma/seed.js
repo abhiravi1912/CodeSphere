@@ -4,9 +4,9 @@ const bcrypt = require('bcryptjs');
 const prisma = new PrismaClient();
 
 async function main() {
-  console.log('🌱 Starting CodeSphere database seeding...');
+  console.log('🌱 Starting CodeSphere database seeding with Indian developer demo data...');
 
-  // 1. Clean existing data
+  // 1. Clean existing data in reverse dependency order
   await prisma.notification.deleteMany();
   await prisma.activity.deleteMany();
   await prisma.message.deleteMany();
@@ -14,304 +14,617 @@ async function main() {
   await prisma.file.deleteMany();
   await prisma.task.deleteMany();
   await prisma.projectMember.deleteMany();
+  await prisma.gitHubIntegration.deleteMany();
   await prisma.project.deleteMany();
   await prisma.user.deleteMany();
+
+  console.log('🧹 Cleaned existing database records.');
 
   // 2. Hash default password
   const passwordHash = await bcrypt.hash('Password123!', 12);
 
-  // 3. Create Users
-  const alex = await prisma.user.create({
+  // 3. Create Exactly 3 Demo Users
+  const abhinav = await prisma.user.create({
     data: {
-      name: 'Alex Rivers',
-      email: 'alex@codesphere.io',
+      name: 'Abhinav Ravi',
+      email: 'abhinav@codesphere.in',
       passwordHash,
-      bio: 'Cloud Architect & Full Stack Lead. Passionate about distributed systems & AWS.',
-      skills: ['AWS', 'React', 'Node.js', 'PostgreSQL', 'Docker', 'Prisma'],
-      githubUrl: 'https://github.com',
-      linkedinUrl: 'https://linkedin.com',
+      bio: 'Full Stack Developer and Cloud enthusiast building practical products with React, Node.js and AWS.',
+      skills: ['React', 'Node.js', 'AWS', 'PostgreSQL', 'Socket.IO', 'Prisma'],
+      githubUrl: 'https://github.com/abhinavravi',
+      linkedinUrl: 'https://linkedin.com/in/abhinavravi',
     },
   });
 
-  const sarah = await prisma.user.create({
+  const aditya = await prisma.user.create({
     data: {
-      name: 'Sarah Chen',
-      email: 'sarah@codesphere.io',
+      name: 'Aditya Sharma',
+      email: 'aditya@codesphere.in',
       passwordHash,
-      bio: 'Frontend Specialist & UI/UX enthusiast. Building beautiful real-time experiences.',
-      skills: ['React', 'TypeScript', 'TailwindCSS', 'Socket.IO', 'Vite'],
-      githubUrl: 'https://github.com',
+      bio: 'Backend and Data Developer focused on APIs, databases and scalable cloud applications.',
+      skills: ['Node.js', 'Python', 'PostgreSQL', 'REST APIs', 'AWS', 'Docker'],
+      githubUrl: 'https://github.com/adityasharma',
+      linkedinUrl: 'https://linkedin.com/in/adityasharma',
     },
   });
 
-  const david = await prisma.user.create({
+  const kabir = await prisma.user.create({
     data: {
-      name: 'David Kim',
-      email: 'david@codesphere.io',
+      name: 'Kabir Chourasia',
+      email: 'kabir@codesphere.in',
       passwordHash,
-      bio: 'DevOps & SRE Engineer. Automating cloud infrastructure on AWS ECS & EKS.',
-      skills: ['Terraform', 'Kubernetes', 'AWS', 'CI/CD', 'Docker'],
-      githubUrl: 'https://github.com',
+      bio: 'Frontend and IoT developer interested in connected systems and clean user experiences.',
+      skills: ['React', 'JavaScript', 'TailwindCSS', 'ESP32', 'Socket.IO', 'Git'],
+      githubUrl: 'https://github.com/kabirchourasia',
+      linkedinUrl: 'https://linkedin.com/in/kabirchourasia',
     },
   });
 
-  const rahul = await prisma.user.create({
-    data: {
-      name: 'Rahul Sharma',
-      email: 'rahul@codesphere.dev',
-      passwordHash,
-      bio: 'Full Stack Developer & Cloud Engineer.',
-      skills: ['React', 'Node.js', 'PostgreSQL', 'AWS'],
-    },
-  });
+  console.log('✅ Created 3 Users: Abhinav Ravi, Aditya Sharma, Kabir Chourasia');
 
-  const elena = await prisma.user.create({
+  // 4. Create Exactly 2 Demo Projects
+  const campusConnect = await prisma.project.create({
     data: {
-      name: 'Elena Rostova',
-      email: 'elena@codesphere.io',
-      passwordHash,
-      bio: 'Backend & Data Engineer focusing on microservices and real-time streaming.',
-      skills: ['Node.js', 'Python', 'Redis', 'PostgreSQL', 'Kafka'],
-    },
-  });
-
-  console.log('✅ Created users: Alex, Sarah, David, Elena');
-
-  // 4. Create Projects
-  const codesphereProject = await prisma.project.create({
-    data: {
-      name: 'CodeSphere Cloud Platform',
-      description: 'A modern cloud-based real-time project collaboration platform for student teams and hackathons, powered by AWS RDS, S3, and Socket.IO.',
-      category: 'Full Stack Web',
-      techStack: ['React', 'Node.js', 'AWS S3', 'PostgreSQL', 'Socket.IO', 'TailwindCSS'],
+      name: 'CampusConnect',
+      description: 'A student collaboration platform for managing college events, clubs, registrations and team activities in one workspace.',
+      category: 'Student Platform',
+      techStack: ['React', 'Node.js', 'PostgreSQL', 'AWS', 'Socket.IO', 'TailwindCSS'],
       status: 'ACTIVE',
-      githubRepoUrl: 'https://github.com/codesphere/codesphere-core',
-      ownerId: alex.id,
-      deadline: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000), // 14 days from now
+      githubRepoUrl: 'https://github.com/campusconnect/campusconnect-app',
+      ownerId: abhinav.id,
+      deadline: new Date(Date.now() + 15 * 24 * 60 * 60 * 1000), // 15 days from now
       members: {
         create: [
-          { userId: alex.id, role: 'OWNER' },
-          { userId: sarah.id, role: 'ADMIN' },
-          { userId: david.id, role: 'MEMBER' },
-          { userId: elena.id, role: 'MEMBER' },
+          { userId: abhinav.id, role: 'OWNER' },
+          { userId: aditya.id, role: 'ADMIN' },
+          { userId: kabir.id, role: 'MEMBER' },
         ],
       },
     },
   });
 
-  const devopsProject = await prisma.project.create({
+  const krishiSetu = await prisma.project.create({
     data: {
-      name: 'DevOps CI/CD & Terraform Pipeline',
-      description: 'Infrastructure as code setup with automated zero-downtime deployment pipelines for AWS ECS Fargate clusters.',
-      category: 'Cloud Infrastructure',
-      techStack: ['AWS ECS', 'Terraform', 'Docker', 'GitHub Actions', 'AWS CloudWatch'],
+      name: 'KrishiSetu',
+      description: 'A digital agriculture platform providing crop information, farming resources and community support for farmers.',
+      category: 'AgriTech',
+      techStack: ['React', 'Node.js', 'PostgreSQL', 'AWS S3', 'REST API', 'IoT'],
       status: 'ACTIVE',
-      ownerId: david.id,
-      deadline: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+      githubRepoUrl: 'https://github.com/krishisetu/krishisetu-platform',
+      ownerId: aditya.id,
+      deadline: new Date(Date.now() + 25 * 24 * 60 * 60 * 1000), // 25 days from now
       members: {
         create: [
-          { userId: david.id, role: 'OWNER' },
-          { userId: alex.id, role: 'ADMIN' },
+          { userId: aditya.id, role: 'OWNER' },
+          { userId: abhinav.id, role: 'ADMIN' },
+          { userId: kabir.id, role: 'MEMBER' },
         ],
       },
     },
   });
 
-  console.log('✅ Created projects: CodeSphere Cloud Platform, DevOps Pipeline');
+  console.log('✅ Created 2 Projects: CampusConnect, KrishiSetu');
 
-  // 5. Create Tasks for CodeSphere Platform
+  // 5. Create Tasks (Around 6 realistic tasks for EACH project)
   await prisma.task.createMany({
     data: [
+      // CampusConnect Tasks
       {
-        projectId: codesphereProject.id,
-        creatorId: alex.id,
-        assigneeId: sarah.id,
-        title: 'Design Dark Theme UI & Glassmorphism Dashboard',
-        description: 'Implement modern sleek glassmorphism aesthetic with Tailwind CSS and responsive sidebar.',
+        projectId: campusConnect.id,
+        creatorId: abhinav.id,
+        assigneeId: kabir.id,
+        title: 'Design student dashboard',
+        description: 'Create responsive glassmorphic overview cards for club events, upcoming deadlines, and announcements.',
         status: 'COMPLETED',
         priority: 'HIGH',
+        dueDate: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000),
       },
       {
-        projectId: codesphereProject.id,
-        creatorId: alex.id,
-        assigneeId: alex.id,
-        title: 'Implement Socket.IO Real-time Messaging Room Engine',
-        description: 'Configure room isolation per project and integrate JWT auth handshakes.',
+        projectId: campusConnect.id,
+        creatorId: abhinav.id,
+        assigneeId: aditya.id,
+        title: 'Create event management APIs',
+        description: 'Develop Express REST endpoints with validation for creating, updating, and listing college campus events.',
         status: 'COMPLETED',
         priority: 'URGENT',
+        dueDate: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000),
       },
       {
-        projectId: codesphereProject.id,
-        creatorId: sarah.id,
-        assigneeId: sarah.id,
-        title: 'Build Interactive Kanban Board Drag & Status Controls',
-        description: 'Create multi-column task flow with real-time updates across active collaborators.',
+        projectId: campusConnect.id,
+        creatorId: aditya.id,
+        assigneeId: kabir.id,
+        title: 'Build event registration page',
+        description: 'Implement multi-step student registration form with team submission and validation.',
         status: 'IN_PROGRESS',
         priority: 'HIGH',
+        dueDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
       },
       {
-        projectId: codesphereProject.id,
-        creatorId: alex.id,
-        assigneeId: david.id,
-        title: 'Setup AWS S3 File Upload & Storage Integration',
-        description: 'Support secure multipart uploads with fallback and cloud bucket storage.',
+        projectId: campusConnect.id,
+        creatorId: abhinav.id,
+        assigneeId: aditya.id,
+        title: 'Design PostgreSQL event schema',
+        description: 'Model relational schemas in Prisma for events, attendees, ticket categories, and organizer roles.',
         status: 'IN_PROGRESS',
         priority: 'MEDIUM',
+        dueDate: new Date(Date.now() + 9 * 24 * 60 * 60 * 1000),
       },
       {
-        projectId: codesphereProject.id,
-        creatorId: alex.id,
-        assigneeId: elena.id,
-        title: 'Add Markdown Documentation Hub with Categories',
-        description: 'Support rich documentation for project blueprints, API docs, and architecture setup.',
+        projectId: campusConnect.id,
+        creatorId: abhinav.id,
+        assigneeId: abhinav.id,
+        title: 'Add real-time event notifications',
+        description: 'Integrate Socket.IO broadcast channels to notify online students when new club events are published.',
         status: 'REVIEW',
         priority: 'MEDIUM',
+        dueDate: new Date(Date.now() + 11 * 24 * 60 * 60 * 1000),
       },
       {
-        projectId: codesphereProject.id,
-        creatorId: alex.id,
-        assigneeId: alex.id,
-        title: 'Configure Production RDS Multi-AZ Deployment',
-        description: 'Finalize production database replica parameters and backup schedules.',
+        projectId: campusConnect.id,
+        creatorId: aditya.id,
+        assigneeId: abhinav.id,
+        title: 'Deploy CampusConnect on AWS',
+        description: 'Configure EC2 instance with Nginx reverse proxy, PM2 process management, and RDS connection pooling.',
         status: 'TODO',
         priority: 'LOW',
+        dueDate: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000),
+      },
+
+      // KrishiSetu Tasks
+      {
+        projectId: krishiSetu.id,
+        creatorId: aditya.id,
+        assigneeId: kabir.id,
+        title: 'Build crop information dashboard',
+        description: 'Design card-based crop catalog with regional seasonality, soil compatibility, and market MSP indicators.',
+        status: 'COMPLETED',
+        priority: 'HIGH',
+        dueDate: new Date(Date.now() + 4 * 24 * 60 * 60 * 1000),
+      },
+      {
+        projectId: krishiSetu.id,
+        creatorId: aditya.id,
+        assigneeId: aditya.id,
+        title: 'Create crop database API',
+        description: 'Implement search, pagination, and filter endpoints for crops, pest advisories, and weather forecasts.',
+        status: 'COMPLETED',
+        priority: 'URGENT',
+        dueDate: new Date(Date.now() + 6 * 24 * 60 * 60 * 1000),
+      },
+      {
+        projectId: krishiSetu.id,
+        creatorId: abhinav.id,
+        assigneeId: kabir.id,
+        title: 'Build mobile-friendly farmer interface',
+        description: 'Optimize touch controls, high-contrast typography, and vernacular language toggles for rural field use.',
+        status: 'IN_PROGRESS',
+        priority: 'HIGH',
+        dueDate: new Date(Date.now() + 10 * 24 * 60 * 60 * 1000),
+      },
+      {
+        projectId: krishiSetu.id,
+        creatorId: aditya.id,
+        assigneeId: aditya.id,
+        title: 'Connect PostgreSQL crop database',
+        description: 'Optimize database indexing on state, soil type, and season queries for fast lookup.',
+        status: 'IN_PROGRESS',
+        priority: 'MEDIUM',
+        dueDate: new Date(Date.now() + 12 * 24 * 60 * 60 * 1000),
+      },
+      {
+        projectId: krishiSetu.id,
+        creatorId: aditya.id,
+        assigneeId: kabir.id,
+        title: 'Prototype ESP32 soil sensor integration',
+        description: 'Connect ESP32 microcontroller with capacitive soil moisture and NPK sensor to send telemetry over HTTP/MQTT.',
+        status: 'REVIEW',
+        priority: 'HIGH',
+        dueDate: new Date(Date.now() + 15 * 24 * 60 * 60 * 1000),
+      },
+      {
+        projectId: krishiSetu.id,
+        creatorId: aditya.id,
+        assigneeId: abhinav.id,
+        title: 'Add AWS S3 resource storage',
+        description: 'Configure S3 bucket storage for agricultural handbook PDFs, crop illness reference images, and soil test reports.',
+        status: 'TODO',
+        priority: 'MEDIUM',
+        dueDate: new Date(Date.now() + 20 * 24 * 60 * 60 * 1000),
       },
     ],
   });
 
-  // 6. Create Documentation
+  console.log('✅ Created 12 realistic tasks across both projects');
+
+  // 6. Create Documentation (2 documents per project)
   await prisma.document.createMany({
     data: [
+      // CampusConnect Documents
       {
-        projectId: codesphereProject.id,
-        authorId: alex.id,
-        title: 'System Architecture & AWS Cloud Topology',
+        projectId: campusConnect.id,
+        authorId: abhinav.id,
+        title: 'CampusConnect Architecture',
         category: 'Architecture',
-        content: `# CodeSphere System Architecture
+        content: `# CampusConnect System Architecture
 
-## Cloud Infrastructure
-- **Frontend**: React + Vite single page application deployed on AWS S3 + CloudFront CDN.
-- **Backend API**: Express + Node.js running on AWS EC2 / ECS Container Service.
-- **Database**: PostgreSQL on Amazon RDS with automated daily snapshots.
-- **Storage**: Amazon S3 Bucket for project assets, diagrams, and files.
-- **Real-Time Engine**: WebSocket via Socket.IO server with project-based rooms.
+## Overview
+CampusConnect is a full-stack collaboration platform designed for college campuses, clubs, and student organizations to streamline event logistics and team activities.
 
-## Security & Auth
-- JWT tokens with HMAC-SHA256 signature
-- Passwords salted and hashed with bcrypt (12 rounds)
-- Role-based access control (OWNER, ADMIN, MEMBER)`,
+## System Components
+- Frontend: React single page application built with Vite and styled using TailwindCSS.
+- Backend: Node.js Express server handling authentication, project workflows, and event registrations.
+- Database: PostgreSQL managed via Prisma ORM for type-safe relational data models.
+- Real-Time Layer: Socket.IO WebSocket server enabling live team chat and instant event alerts.
+- Hosting & Cloud: AWS EC2 instance running Nginx reverse proxy with PM2 process manager and Amazon RDS for database persistence.
+
+## Security & Authentication
+- JWT authentication with secure HTTP authorization headers.
+- Bcrypt password hashing with 12 salt rounds.
+- Role-based authorization: OWNER, ADMIN, and MEMBER permissions.`,
       },
       {
-        projectId: codesphereProject.id,
-        authorId: sarah.id,
-        title: 'Frontend Component Guidelines & Design Tokens',
-        category: 'Setup',
-        content: `# Frontend Design System
-
-- **Background**: Deep obsidian \`#0B0F19\` with dark slate accents \`#0F172A\`
-- **Gradients**: Indigo to Sky \`from-indigo-600 to-sky-400\`
-- **Glassmorphism**: Backdrop blur with semi-transparent border \`border-slate-800/80\`
-- **Icons**: Lucide React icon package`,
-      },
-      {
-        projectId: codesphereProject.id,
-        authorId: david.id,
-        title: 'REST API & WebSocket Specifications',
+        projectId: campusConnect.id,
+        authorId: aditya.id,
+        title: 'CampusConnect API Notes',
         category: 'API',
-        content: `# CodeSphere API Specification
+        content: `# CampusConnect API Documentation
+
+## Base URL
+All API requests are routed to \`/api\`.
+
+## Endpoints Summary
 
 ### Authentication
-- \`POST /api/auth/register\` - Create account
-- \`POST /api/auth/login\` - Authenticate & receive JWT
+- \`POST /api/auth/register\` - Register a student or organizer account
+- \`POST /api/auth/login\` - Authenticate user and obtain JWT token
 
-### Projects
-- \`GET /api/projects\` - List user projects
-- \`GET /api/projects/:id/health\` - Get live health metrics
-- \`GET /api/projects/:id/tasks\` - Fetch Kanban board
-- \`GET /api/projects/:id/files\` - List uploaded cloud files
-- \`GET /api/projects/:id/documents\` - List documentation articles`,
+### Projects & Events
+- \`GET /api/projects\` - Retrieve all user projects
+- \`GET /api/projects/:id\` - Fetch single project details with members
+- \`GET /api/projects/:id/tasks\` - Get Kanban board tasks
+- \`POST /api/projects/:id/tasks\` - Create a new event milestone or task
+- \`GET /api/projects/:id/messages\` - Fetch project chat stream
+- \`GET /api/projects/:id/files\` - List project documents and assets
+- \`GET /api/projects/:id/documents\` - Fetch project architecture and design notes`,
+      },
+
+      // KrishiSetu Documents
+      {
+        projectId: krishiSetu.id,
+        authorId: aditya.id,
+        title: 'KrishiSetu System Overview',
+        category: 'Architecture',
+        content: `# KrishiSetu Digital Agriculture Platform
+
+## System Purpose
+KrishiSetu bridges Indian farmers with modern agricultural guidance, real-time soil health indicators, and regional crop advisory data.
+
+## Core Modules
+1. Crop Knowledge Base: Structured database of Indian crops, sowing seasons, MSP rates, and pest management guidelines.
+2. Soil Health & IoT Telemetry: Integration with ESP32 sensor hardware for moisture, humidity, and temperature monitoring.
+3. Agricultural Resources: Downloadable farming handbooks, soil test reports, and weather bulletins stored on AWS S3.
+4. Community Support: Real-time discussion forum for farmer queries and agronomist consultations.
+
+## Technology Stack
+- Frontend: React, TailwindCSS, Chart.js / Recharts for sensor telemetry visualization
+- Backend: Node.js, Express, Prisma ORM
+- Database: PostgreSQL on AWS RDS
+- Storage: AWS S3 Bucket for agricultural advisories and media`,
+      },
+      {
+        projectId: krishiSetu.id,
+        authorId: kabir.id,
+        title: 'ESP32 Sensor Integration',
+        category: 'Technical',
+        content: `# ESP32 Soil Sensor Integration Notes
+
+## Hardware Configuration
+- Microcontroller: ESP32 NodeMCU Development Board
+- Sensor 1: Capacitive Soil Moisture Sensor v1.2 (Analog pin ADC1_CH0)
+- Sensor 2: DHT22 Temperature & Humidity Sensor (GPIO 4)
+- Power: 3.3V / 5V regulated battery pack or solar charge controller
+
+## Firmware Pipeline
+1. Boot & WiFi Handshake: ESP32 connects to local gateway or cellular hotspot.
+2. Sensor Sampling: Collects 5 consecutive readings every 30 seconds and calculates moving average.
+3. Payload Serialization: Encodes sensor metrics (soilMoisturePercent, temperatureC, humidityPercent) into JSON.
+4. HTTP Ingestion: Sends \`POST /api/iot/telemetry\` with project API key for real-time visualization on the KrishiSetu dashboard.`,
       },
     ],
   });
 
-  // 7. Create Messages
+  console.log('✅ Created 4 Documentation entries');
+
+  // 7. Create Chat Messages (Natural, professional, without emojis)
   await prisma.message.createMany({
     data: [
+      // CampusConnect Chat
       {
-        projectId: codesphereProject.id,
-        senderId: alex.id,
-        content: 'Welcome everyone to CodeSphere! Real-time chat and AWS backend services are live.',
+        projectId: campusConnect.id,
+        senderId: abhinav.id,
+        content: 'Welcome team to the CampusConnect project workspace. Let us coordinate our tasks here for the upcoming college semester.',
       },
       {
-        projectId: codesphereProject.id,
-        senderId: sarah.id,
-        content: 'The new dark glassmorphic design and Kanban board look amazing! 🚀',
+        projectId: campusConnect.id,
+        senderId: aditya.id,
+        content: 'I have finished setting up the event management REST APIs in Express. You can test the endpoints locally or against the staging server.',
       },
       {
-        projectId: codesphereProject.id,
-        senderId: david.id,
-        content: 'S3 storage service and PostgreSQL RDS schemas are all hooked up.',
+        projectId: campusConnect.id,
+        senderId: kabir.id,
+        content: 'The student dashboard UI is complete and responsive. I am now working on the event registration form with team size validation.',
+      },
+      {
+        projectId: campusConnect.id,
+        senderId: abhinav.id,
+        content: 'Great work Kabir. Once the form is ready, I will link the Socket.IO real-time notification listener so users get instant registration confirmations.',
+      },
+      {
+        projectId: campusConnect.id,
+        senderId: aditya.id,
+        content: 'PostgreSQL schema migrations for event categories and attendance tracking are ready. I will run a review before we push to production.',
+      },
+      {
+        projectId: campusConnect.id,
+        senderId: kabir.id,
+        content: 'Tested the registration flow with multiple mock inputs. Everything looks clean and validation errors display properly.',
+      },
+
+      // KrishiSetu Chat
+      {
+        projectId: krishiSetu.id,
+        senderId: aditya.id,
+        content: 'Welcome to KrishiSetu. Our primary goal is providing reliable crop guidance, soil health telemetry, and farming advisories.',
+      },
+      {
+        projectId: krishiSetu.id,
+        senderId: kabir.id,
+        content: 'I have calibrated the ESP32 soil moisture sensor and tested reading moisture and temperature values in loop.',
+      },
+      {
+        projectId: krishiSetu.id,
+        senderId: abhinav.id,
+        content: 'The crop database APIs are tested and responding with low latency. I am setting up the AWS S3 integration for storing crop guides and test reports.',
+      },
+      {
+        projectId: krishiSetu.id,
+        senderId: aditya.id,
+        content: 'Make sure the API routes include proper filtering by state, crop season, and soil type for accurate farmer queries.',
+      },
+      {
+        projectId: krishiSetu.id,
+        senderId: kabir.id,
+        content: 'The mobile-first interface cards for Kharif and Rabi crops are styled. Working on the live sensor readout widget now.',
+      },
+      {
+        projectId: krishiSetu.id,
+        senderId: abhinav.id,
+        content: 'I will review the S3 upload service and verify file size limits before we test large PDF guide uploads.',
       },
     ],
   });
+
+  console.log('✅ Created realistic team chat messages for both projects');
 
   // 8. Create Activities
   await prisma.activity.createMany({
     data: [
+      // CampusConnect Activities
       {
-        projectId: codesphereProject.id,
-        userId: alex.id,
+        projectId: campusConnect.id,
+        userId: abhinav.id,
         action: 'PROJECT_CREATED',
-        details: 'Alex Rivers created project "CodeSphere Cloud Platform".',
+        details: 'Abhinav Ravi created project "CampusConnect".',
       },
       {
-        projectId: codesphereProject.id,
-        userId: sarah.id,
-        action: 'TASK_COMPLETED',
-        details: 'Sarah Chen completed task "Design Dark Theme UI & Glassmorphism Dashboard".',
-      },
-      {
-        projectId: codesphereProject.id,
-        userId: david.id,
+        projectId: campusConnect.id,
+        userId: aditya.id,
         action: 'MEMBER_JOINED',
-        details: 'David Kim joined the project as MEMBER.',
+        details: 'Aditya Sharma joined the project as ADMIN.',
+      },
+      {
+        projectId: campusConnect.id,
+        userId: kabir.id,
+        action: 'MEMBER_JOINED',
+        details: 'Kabir Chourasia joined the project as MEMBER.',
+      },
+      {
+        projectId: campusConnect.id,
+        userId: kabir.id,
+        action: 'TASK_COMPLETED',
+        details: 'Kabir Chourasia completed task "Design student dashboard".',
+      },
+      {
+        projectId: campusConnect.id,
+        userId: aditya.id,
+        action: 'TASK_COMPLETED',
+        details: 'Aditya Sharma completed task "Create event management APIs".',
+      },
+      {
+        projectId: campusConnect.id,
+        userId: abhinav.id,
+        action: 'DOCUMENT_CREATED',
+        details: 'Abhinav Ravi created document "CampusConnect Architecture".',
+      },
+      {
+        projectId: campusConnect.id,
+        userId: kabir.id,
+        action: 'FILE_UPLOADED',
+        details: 'Kabir Chourasia uploaded file "CampusConnect_UI_Design.pdf".',
+      },
+
+      // KrishiSetu Activities
+      {
+        projectId: krishiSetu.id,
+        userId: aditya.id,
+        action: 'PROJECT_CREATED',
+        details: 'Aditya Sharma created project "KrishiSetu".',
+      },
+      {
+        projectId: krishiSetu.id,
+        userId: abhinav.id,
+        action: 'MEMBER_JOINED',
+        details: 'Abhinav Ravi joined the project as ADMIN.',
+      },
+      {
+        projectId: krishiSetu.id,
+        userId: kabir.id,
+        action: 'MEMBER_JOINED',
+        details: 'Kabir Chourasia joined the project as MEMBER.',
+      },
+      {
+        projectId: krishiSetu.id,
+        userId: kabir.id,
+        action: 'TASK_COMPLETED',
+        details: 'Kabir Chourasia completed task "Build crop information dashboard".',
+      },
+      {
+        projectId: krishiSetu.id,
+        userId: aditya.id,
+        action: 'TASK_COMPLETED',
+        details: 'Aditya Sharma completed task "Create crop database API".',
+      },
+      {
+        projectId: krishiSetu.id,
+        userId: kabir.id,
+        action: 'FILE_UPLOADED',
+        details: 'Kabir Chourasia uploaded file "ESP32_Sensor_Test.csv".',
       },
     ],
   });
+
+  console.log('✅ Created project activities');
 
   // 9. Create Notifications
   await prisma.notification.createMany({
     data: [
+      // Abhinav Ravi Notifications
       {
-        userId: alex.id,
-        title: 'Welcome to CodeSphere',
-        message: 'Your cloud workspace "CodeSphere Cloud Platform" is initialized and ready.',
-        linkUrl: `/projects/${codesphereProject.id}`,
+        userId: abhinav.id,
+        title: 'Welcome to CampusConnect',
+        message: 'Your student collaboration workspace CampusConnect is initialized and active.',
+        linkUrl: `/projects/${campusConnect.id}`,
         isRead: false,
       },
       {
-        userId: alex.id,
-        title: 'Task Status Updated',
-        message: 'Sarah Chen moved "Design Dark Theme UI" to COMPLETED.',
-        linkUrl: `/projects/${codesphereProject.id}`,
+        userId: abhinav.id,
+        title: 'Task Assigned: Deploy CampusConnect on AWS',
+        message: 'Aditya Sharma assigned you the task "Deploy CampusConnect on AWS".',
+        linkUrl: `/projects/${campusConnect.id}`,
         isRead: false,
       },
       {
-        userId: sarah.id,
-        title: 'Project Invitation',
-        message: 'Alex Rivers invited you to join "CodeSphere Cloud Platform".',
-        linkUrl: `/projects/${codesphereProject.id}`,
+        userId: abhinav.id,
+        title: 'Review Requested: ESP32 Sensor Integration',
+        message: 'Kabir Chourasia requested your review on "ESP32 Soil Sensor Integration" documentation in KrishiSetu.',
+        linkUrl: `/projects/${krishiSetu.id}`,
+        isRead: false,
+      },
+
+      // Aditya Sharma Notifications
+      {
+        userId: aditya.id,
+        title: 'Welcome to KrishiSetu',
+        message: 'You are the project owner for KrishiSetu digital agriculture platform.',
+        linkUrl: `/projects/${krishiSetu.id}`,
+        isRead: false,
+      },
+      {
+        userId: aditya.id,
+        title: 'New Task Assigned: Design PostgreSQL event schema',
+        message: 'Abhinav Ravi assigned you the task "Design PostgreSQL event schema" in CampusConnect.',
+        linkUrl: `/projects/${campusConnect.id}`,
+        isRead: false,
+      },
+      {
+        userId: aditya.id,
+        title: 'Task Completed: Build crop information dashboard',
+        message: 'Kabir Chourasia marked "Build crop information dashboard" as COMPLETED in KrishiSetu.',
+        linkUrl: `/projects/${krishiSetu.id}`,
+        isRead: false,
+      },
+
+      // Kabir Chourasia Notifications
+      {
+        userId: kabir.id,
+        title: 'Welcome to CampusConnect & KrishiSetu',
+        message: 'You have been added as a collaborator to CampusConnect and KrishiSetu.',
+        linkUrl: `/projects/${campusConnect.id}`,
+        isRead: false,
+      },
+      {
+        userId: kabir.id,
+        title: 'New Task Assigned: Build event registration page',
+        message: 'Aditya Sharma assigned you the task "Build event registration page" in CampusConnect.',
+        linkUrl: `/projects/${campusConnect.id}`,
+        isRead: false,
+      },
+      {
+        userId: kabir.id,
+        title: 'Task Review: Prototype ESP32 soil sensor integration',
+        message: 'Your task "Prototype ESP32 soil sensor integration" is ready for final testing.',
+        linkUrl: `/projects/${krishiSetu.id}`,
         isRead: false,
       },
     ],
   });
 
+  console.log('✅ Created unread notifications for all users');
+
+  // 10. Create Database File Metadata
+  const bucketName = process.env.AWS_S3_BUCKET_NAME || 'codesphere-local-bucket';
+
+  await prisma.file.createMany({
+    data: [
+      // CampusConnect Files
+      {
+        projectId: campusConnect.id,
+        uploaderId: abhinav.id,
+        fileName: 'CampusConnect_Project_Plan.pdf',
+        fileSize: 245760, // 240 KB
+        fileType: 'application/pdf',
+        s3Key: `projects/${campusConnect.id}/CampusConnect_Project_Plan.pdf`,
+        s3Bucket: bucketName,
+      },
+      {
+        projectId: campusConnect.id,
+        uploaderId: kabir.id,
+        fileName: 'CampusConnect_UI_Design.pdf',
+        fileSize: 524288, // 512 KB
+        fileType: 'application/pdf',
+        s3Key: `projects/${campusConnect.id}/CampusConnect_UI_Design.pdf`,
+        s3Bucket: bucketName,
+      },
+
+      // KrishiSetu Files
+      {
+        projectId: krishiSetu.id,
+        uploaderId: aditya.id,
+        fileName: 'KrishiSetu_API_Notes.pdf',
+        fileSize: 184320, // 180 KB
+        fileType: 'application/pdf',
+        s3Key: `projects/${krishiSetu.id}/KrishiSetu_API_Notes.pdf`,
+        s3Bucket: bucketName,
+      },
+      {
+        projectId: krishiSetu.id,
+        uploaderId: kabir.id,
+        fileName: 'ESP32_Sensor_Test.csv',
+        fileSize: 40960, // 40 KB
+        fileType: 'text/csv',
+        s3Key: `projects/${krishiSetu.id}/ESP32_Sensor_Test.csv`,
+        s3Bucket: bucketName,
+      },
+    ],
+  });
+
+  console.log('✅ Created File records for both projects');
   console.log('🎉 CodeSphere database seeding completed successfully!');
 }
 
 main()
   .catch((e) => {
-    console.error('Seeding error:', e);
+    console.error('❌ Seeding error:', e);
     process.exit(1);
   })
   .finally(async () => {

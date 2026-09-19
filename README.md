@@ -115,7 +115,7 @@ The application will be accessible at:
 - **Health Check**: `http://localhost:5000/api/health`
 
 ### 3. Demo Credentials
-- **Email**: `alex@codesphere.io`
+- **Email**: `abhinav@codesphere.in`
 - **Password**: `Password123!`
 
 ---
